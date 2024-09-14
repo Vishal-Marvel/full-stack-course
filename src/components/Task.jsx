@@ -5,7 +5,7 @@ const Task = ({ task, handleComplete, handleDelete }) => {
   //task -> {task: 'task2', completed:false, id: 44}
   return (
     <div className="w-full hover:bg-slate-300 p-2 rounded-xl flex justify-between items-center">
-      <span className={task.completed && "line-through"}>{task.task}</span>
+      <span className={task.completed && "line-through"}>{task.taskName}</span>
       <div className="flex gap-2 justify-center items-center">
         <span
           onClick={() => handleComplete(task.id)}

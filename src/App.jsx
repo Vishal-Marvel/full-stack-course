@@ -4,74 +4,109 @@ import Task from "./components/Task";
 const App = () => {
   const [task, setTask] = useState("");
   const [tasks, setTasks] = useState([]);
-  // const [filteredTasks, setFiltertedTasks] = useState([]);
+  const [userId, setUserId] = useState(1);
   const [search, setSearch] = useState("");
-  // ['task1', 'task2', 'task3']
   const [pending, setPending] = useState(0);
   const [completed, setCompleted] = useState(0);
+
+  const getTasks = async () => {
+    const tasks = await fetch(`http://localhost:5000/user/${userId}/tasks`);
+    const data = await tasks.json();
+    const completedCount = data.tasks.filter((task) => task.completed).length;
+    setCompleted(completedCount);
+    setPending(data.tasks.length - completedCount);
+    setTasks(data.tasks);
+  };
+
+  useEffect(() => {
+    getTasks();
+  }, []);
 
   const handleChange = (e) => {
     setTask(e.target.value);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const taskObj = { task: task, completed: false, id: Date.now() };
-    setTasks((prev) => [...prev, taskObj]);
+    await fetch("http://localhost:5000/task", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ task, userId: userId }),
+    });
+    getTasks();
     setTask("");
-    setPending((prev) => prev + 1);
   };
 
-  const handleComplete = (id) => {
+  const handleComplete = async (id, completeAll=false) => {
     // id = 44
     // tasks = [{task: task, completed:false, id: 23},
     // {task: task1, completed:false, id: 34},
     // {task: task2, completed:false, id: 44}]
     const taskObj = tasks.find((task) => task.id === id);
-    // taskObj -> {task: task2, completed:false, id: 44}
-    if (taskObj.completed) {
-      taskObj.completed = false;
-      setCompleted((prev) => prev - 1);
-      setPending((prev) => prev + 1);
-    } else {
-      taskObj.completed = true;
-      setCompleted((prev) => prev + 1);
-      setPending((prev) => prev - 1);
-    }
+    // taskObj -> {taskName: task2, completed:false, id: 44, usersId: 2}
+    // if (taskObj.completed) {
+    //   taskObj.completed = false;
+    //   setCompleted((prev) => prev - 1);
+    //   setPending((prev) => prev + 1);
+    // } else {
+    //   taskObj.completed = true;
+    //   setCompleted((prev) => prev + 1);
+    //   setPending((prev) => prev - 1);
+    // }
 
-    setTasks((prev) =>
-      [...prev.filter((task) => task.id !== id), taskObj].sort(
-        (a, b) => a.id - b.id
-      )
-    );
+    await fetch(`http://localhost:5000/task/${id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        task: taskObj.taskName,
+        completed: completeAll? true: !taskObj.completed,
+      }),
+    });
+    getTasks();
+    // setTasks((prev) =>
+    //   [...prev.filter((task) => task.id !== id), taskObj].sort(
+    //     (a, b) => a.id - b.id
+    //   )
+    // );
   };
 
   const handleDeleteAll = () => {
-    setTasks([]);
-    setCompleted(0);
-    setPending(0);
+    // setTasks([]);
+    // setCompleted(0);
+    // setPending(0);
+    tasks.forEach((task) => handleDelete(task.id));
+
   };
 
   const handleCompleteAll = () => {
-    if (completed === tasks.length) {
-      setCompleted(0);
-      setPending(tasks.length);
-      setTasks((prev) => prev.map((task) => ({ ...task, completed: false })));
-    } else {
-      setCompleted(tasks.length);
-      setPending(0);
-      setTasks((prev) => prev.map((task) => ({ ...task, completed: true })));
-    }
+    // if (completed === tasks.length) {
+    //   setCompleted(0);
+    //   setPending(tasks.length);
+    //   setTasks((prev) => prev.map((task) => ({ ...task, completed: false })));
+    // } else {
+    //   setCompleted(tasks.length);
+    //   setPending(0);
+    //   setTasks((prev) => prev.map((task) => ({ ...task, completed: true })));
+    // }
+    tasks.forEach((task) => handleComplete(task.id, true));
   };
 
-  const handleDelete = (id) => {
-    const taskObj = tasks.find((task) => task.id === id);
-    if (taskObj.completed) {
-      setCompleted((prev) => prev - 1);
-    } else {
-      setPending((prev) => prev - 1);
-    }
-    setTasks((prev) => prev.filter((task) => task.id !== id));
+  const handleDelete = async (id) => {
+    // const taskObj = tasks.find((task) => task.id === id);
+    // if (taskObj.completed) {
+    //   setCompleted((prev) => prev - 1);
+    // } else {
+    //   setPending((prev) => prev - 1);
+    // }
+    // setTasks((prev) => prev.filter((task) => task.id !== id));
+    await fetch(`http://localhost:5000/task/${id}`, {
+      method: "DELETE",
+    });
+    getTasks();
   };
 
   // useEffect(() => {
@@ -81,6 +116,21 @@ const App = () => {
   return (
     <div className="w-screen h-screen flex flex-col justify-start bg-slate-200 items-center pt-10">
       <span className="font-bold text-2xl">Task Manager</span>
+      <div className="flex gap-2 m-2 p-2 w-1/3 items-center justify-center">
+        <span>User Id:</span>
+        <input
+          type="number"
+          value={userId}
+          onChange={(e) => setUserId(e.target.value)}
+          className=" p-2 bg-white rounded-lg outline-none"
+        />
+        <button
+          onClick={getTasks}
+          className="bg-blue-500 hover:bg-blue-400 trasnition-all duration-100 ease-in p-2 rounded-lg text-white"
+        >
+          Fetch Tasks
+        </button>
+      </div>
       <div className="w-[70%] md:w-[60%] lg:w-1/2 bg-slate-400 min-h-52 rounded-xl flex flex-col items-center p-4">
         <input
           className="w-full p-2 bg-slate-200 rounded-lg outline-none"
@@ -95,14 +145,12 @@ const App = () => {
           {tasks.length > 0 && (
             <div className="flex w-full items-center justify-center gap-2">
               <button
-                
                 className=" text-sm bg-blue-500 hover:bg-blue-400 trasnition-all duration-100 ease-in p-2 rounded-lg "
                 onClick={handleCompleteAll}
               >
                 {completed === tasks.length ? "Uncomplete All" : "Complete All"}
               </button>
               <button
-                
                 className=" text-sm bg-red-500 hover:bg-red-400 trasnition-all duration-100 ease-in p-2 rounded-lg "
                 onClick={handleDeleteAll}
               >
@@ -116,7 +164,7 @@ const App = () => {
           {tasks.length > 0 ? (
             //task -> {task: task/task1/task2, completed:false}
             tasks.map((task, index) => {
-              if (task.task.includes(search)) {
+              if (task.taskName.includes(search)) {
                 return (
                   <Task
                     key={index}
